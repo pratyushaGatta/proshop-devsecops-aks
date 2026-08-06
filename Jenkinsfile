@@ -60,6 +60,7 @@ pipeline {
                       --exit-code 1 \
                       --severity HIGH,CRITICAL \
                       --ignore-unfixed \
+                      --skip-version-check \
                       ${ACR_LOGIN_SERVER}/${IMAGE_NAME}:${IMAGE_TAG}
                 '''
             }
