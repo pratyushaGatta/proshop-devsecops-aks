@@ -1,0 +1,52 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-proshop
+  labels:
+    app: proshop
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: proshop
+  template:
+    metadata:
+      labels:
+        app: proshop
+    spec:
+      containers:
+        - name: proshop
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.containerPort }}
+              protocol: TCP
+
+          env:
+            - name: NODE_ENV
+              value: {{ .Values.environment.nodeEnv | quote }}
+
+            - name: PORT
+              value: {{ .Values.environment.port | quote }}
+
+            - name: PAGINATION_LIMIT
+              value: {{ .Values.environment.paginationLimit | quote }}
+
+            - name: PAYPAL_CLIENT_ID
+              value: {{ .Values.environment.paypalClientId | quote }}
+
+            - name: MONGO_URI
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Release.Name }}-proshop-secret
+                  key: mongo-uri
+
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Release.Name }}-proshop-secret
+                  key: jwt-secret
+
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}

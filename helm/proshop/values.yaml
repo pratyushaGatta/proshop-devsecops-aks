@@ -1,0 +1,37 @@
+replicaCount: 1
+
+image:
+  repository: proshopacrzoyd3.azurecr.io/proshop-app
+  tag: "v1"
+  pullPolicy: IfNotPresent
+
+service:
+  type: LoadBalancer
+  port: 80
+  targetPort: 5000
+
+containerPort: 5000
+
+environment:
+  nodeEnv: production
+  port: "5000"
+  paginationLimit: "8"
+  paypalClientId: ""
+
+secret:
+  mongoUri: ""
+  jwtSecret: ""
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+autoscaling:
+  enabled: true
+  minReplicas: 1
+  maxReplicas: 3
+  targetCPUUtilizationPercentage: 70
