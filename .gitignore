@@ -29,3 +29,20 @@ uploads/*jpg
 
 # API tests
 http
+
+# Environment and dependencies
+.env
+node_modules/
+frontend/node_modules/
+
+# Terraform local files and secrets
+terraform/.terraform/
+terraform/*.tfstate
+terraform/*.tfstate.*
+terraform/*.tfplan
+terraform/terraform.tfvars
+terraform/.terraform.lock.hcl
+
+# SSH/private keys
+*.pem
+*.key
