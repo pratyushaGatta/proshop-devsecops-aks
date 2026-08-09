@@ -6,9 +6,15 @@ image:
   pullPolicy: IfNotPresent
 
 service:
-  type: LoadBalancer
+  type: ClusterIP
   port: 80
   targetPort: 5000
+
+ingress:
+  enabled: true
+  className: nginx
+  path: /
+  pathType: Prefix
 
 containerPort: 5000
 
@@ -35,3 +41,5 @@ autoscaling:
   minReplicas: 1
   maxReplicas: 3
   targetCPUUtilizationPercentage: 70
+
+  
