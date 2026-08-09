@@ -208,9 +208,17 @@ pipeline {
                       --namespace ${HELM_NAMESPACE} \
                       --timeout=180s
 
+                    echo "=== PODS ==="
                     kubectl get pods -n ${HELM_NAMESPACE}
+
+                    echo "=== SERVICES ==="
                     kubectl get services -n ${HELM_NAMESPACE}
+
+                    echo "=== HPA ==="
                     kubectl get hpa -n ${HELM_NAMESPACE}
+
+                    echo "=== INGRESS ==="
+                    kubectl get ingress -n ${HELM_NAMESPACE} || true
                 '''
             }
         }
@@ -229,4 +237,4 @@ pipeline {
             sh 'az logout || true'
         }
     }
-}exit
+}
