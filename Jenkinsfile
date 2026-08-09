@@ -41,7 +41,7 @@ pipeline {
                     withSonarQubeEnv('SonarQube') {
                         sh """
                             ${scannerHome}/bin/sonar-scanner \
-                              -Dsonar.projectKey=proshop-devsecops \
+                              -Dsonar.projectKey=ProShop-DevSecOps  \
                               -Dsonar.projectName="ProShop DevSecOps" \
                               -Dsonar.sources=backend,frontend/src \
                               -Dsonar.exclusions=**/node_modules/**,**/build/** \
