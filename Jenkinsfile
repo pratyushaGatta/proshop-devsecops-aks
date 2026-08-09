@@ -2,8 +2,8 @@ pipeline {
     agent any
 
     environment {
-        ACR_NAME          = 'proshopacrzoyd3'
-        ACR_LOGIN_SERVER  = 'proshopacrzoyd3.azurecr.io'
+        ACR_NAME           = 'proshopacrzoyd3'
+        ACR_LOGIN_SERVER   = 'proshopacrzoyd3.azurecr.io'
         AKS_RESOURCE_GROUP = 'rg-proshop-dev'
         AKS_CLUSTER_NAME   = 'aks-proshop-dev'
         IMAGE_NAME         = 'proshop-app'
@@ -13,6 +13,7 @@ pipeline {
     }
 
     stages {
+
         stage('Checkout') {
             steps {
                 checkout scm
@@ -32,9 +33,41 @@ pipeline {
             }
         }
 
+        stage('SonarQube Analysis') {
+            steps {
+                script {
+                    def scannerHome = tool 'SonarScanner'
+
+                    withSonarQubeEnv('SonarQube') {
+                        sh """
+                            ${scannerHome}/bin/sonar-scanner \
+                              -Dsonar.projectKey=proshop-devsecops \
+                              -Dsonar.projectName="ProShop DevSecOps" \
+                              -Dsonar.sources=backend,frontend/src \
+                              -Dsonar.exclusions=**/node_modules/**,**/build/** \
+                              -Dsonar.sourceEncoding=UTF-8
+                        """
+                    }
+                }
+            }
+        }
+
+        stage('SonarQube Quality Gate') {
+            steps {
+                timeout(time: 10, unit: 'MINUTES') {
+                    waitForQualityGate abortPipeline: true
+                }
+            }
+        }
+
         stage('Snyk Scan') {
             steps {
-                withCredentials([string(credentialsId: 'snyk-token', variable: 'SNYK_TOKEN')]) {
+                withCredentials([
+                    string(
+                        credentialsId: 'snyk-token',
+                        variable: 'SNYK_TOKEN'
+                    )
+                ]) {
                     sh '''
                         snyk auth "$SNYK_TOKEN"
                         snyk test --severity-threshold=high || true
@@ -55,23 +88,35 @@ pipeline {
 
         stage('Trivy Scan') {
             steps {
-               sh '''
-                   trivy image \
-                        --severity HIGH,CRITICAL \
-                        --ignore-unfixed \
-                        --skip-version-check \
-                         ${ACR_LOGIN_SERVER}/${IMAGE_NAME}:${IMAGE_TAG} || true
+                sh '''
+                    trivy image \
+                      --severity HIGH,CRITICAL \
+                      --ignore-unfixed \
+                      --skip-version-check \
+                      ${ACR_LOGIN_SERVER}/${IMAGE_NAME}:${IMAGE_TAG} || true
                 '''
-           }
+            }
         }
 
         stage('Azure Login') {
             steps {
                 withCredentials([
-                    string(credentialsId: 'azure-client-id', variable: 'AZURE_CLIENT_ID'),
-                    string(credentialsId: 'azure-client-secret', variable: 'AZURE_CLIENT_SECRET'),
-                    string(credentialsId: 'azure-tenant-id', variable: 'AZURE_TENANT_ID'),
-                    string(credentialsId: 'azure-subscription-id', variable: 'AZURE_SUBSCRIPTION_ID')
+                    string(
+                        credentialsId: 'azure-client-id',
+                        variable: 'AZURE_CLIENT_ID'
+                    ),
+                    string(
+                        credentialsId: 'azure-client-secret',
+                        variable: 'AZURE_CLIENT_SECRET'
+                    ),
+                    string(
+                        credentialsId: 'azure-tenant-id',
+                        variable: 'AZURE_TENANT_ID'
+                    ),
+                    string(
+                        credentialsId: 'azure-subscription-id',
+                        variable: 'AZURE_SUBSCRIPTION_ID'
+                    )
                 ]) {
                     sh '''
                         az login \
@@ -91,7 +136,9 @@ pipeline {
             steps {
                 sh '''
                     az acr login --name ${ACR_NAME}
-                    docker push ${ACR_LOGIN_SERVER}/${IMAGE_NAME}:${IMAGE_TAG}
+
+                    docker push \
+                      ${ACR_LOGIN_SERVER}/${IMAGE_NAME}:${IMAGE_TAG}
                 '''
             }
         }
@@ -110,8 +157,14 @@ pipeline {
         stage('Helm Lint') {
             steps {
                 withCredentials([
-                    string(credentialsId: 'mongo-uri', variable: 'MONGO_URI'),
-                    string(credentialsId: 'jwt-secret', variable: 'JWT_SECRET')
+                    string(
+                        credentialsId: 'mongo-uri',
+                        variable: 'MONGO_URI'
+                    ),
+                    string(
+                        credentialsId: 'jwt-secret',
+                        variable: 'JWT_SECRET'
+                    )
                 ]) {
                     sh '''
                         helm lint ./helm/proshop \
@@ -125,8 +178,14 @@ pipeline {
         stage('Deploy to AKS') {
             steps {
                 withCredentials([
-                    string(credentialsId: 'mongo-uri', variable: 'MONGO_URI'),
-                    string(credentialsId: 'jwt-secret', variable: 'JWT_SECRET')
+                    string(
+                        credentialsId: 'mongo-uri',
+                        variable: 'MONGO_URI'
+                    ),
+                    string(
+                        credentialsId: 'jwt-secret',
+                        variable: 'JWT_SECRET'
+                    )
                 ]) {
                     sh '''
                         helm upgrade --install ${HELM_RELEASE} ./helm/proshop \
@@ -170,4 +229,4 @@ pipeline {
             sh 'az logout || true'
         }
     }
-}
+}exit
