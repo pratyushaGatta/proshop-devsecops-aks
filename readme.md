@@ -1,567 +1,453 @@
-# ProShop eCommerce Platform (v2)
+# ProShop — End-to-End DevSecOps Pipeline on Azure AKS
 
-> eCommerce platform built with the MERN stack & Redux.
+> A Node.js shopping application deployed to Azure Kubernetes Service through a Jenkins-based DevSecOps pipeline using Terraform, Docker, Azure Container Registry, Helm, SonarQube, Snyk, Trivy, NGINX Ingress, and MongoDB-compatible cloud data services.
 
-<img src="./frontend/public/images/screens.png">
+## Project Overview
 
-This project is part of my [MERN Stack From Scratch | eCommerce Platform](https://www.traversymedia.com/mern-stack-from-scratch) course. It is a full-featured shopping cart with PayPal & credit/debit payments.
+This project demonstrates an end-to-end DevSecOps workflow for the ProShop Node.js shopping application.
 
-This is version 2.0 of the app, which uses Redux Toolkit. The first version can be found [here](https://proshopdemo.dev)
+The application was first validated locally, containerized with Docker, and connected to a MongoDB container through Docker networking. Azure infrastructure was then provisioned with Terraform, the application image was pushed to Azure Container Registry (ACR), and the workload was deployed to Azure Kubernetes Service (AKS) with Helm.
 
-<!-- toc -->
+A dedicated Ubuntu virtual machine hosts Jenkins and the supporting CI/CD and security tooling. The Jenkins pipeline performs source checkout, dependency installation, testing, SonarQube analysis, security scanning, Docker image creation, ACR push, and AKS deployment.
 
-- [Features](#features)
-- [Usage](#usage)
-  - [Env Variables](#env-variables)
-  - [Install Dependencies (frontend & backend)](#install-dependencies-frontend--backend)
-  - [Run](#run)
-- [Build & Deploy](#build--deploy)
-  - [Seed Database](#seed-database)
+## Architecture
 
-* [Bug Fixes, corrections and code FAQ](#bug-fixes-corrections-and-code-faq)
-  - [BUG: Warnings on ProfileScreen](#bug-warnings-on-profilescreen)
-  - [BUG: Changing an uncontrolled input to be controlled](#bug-changing-an-uncontrolled-input-to-be-controlled)
-  - [BUG: All file types are allowed when updating product images](#bug-all-file-types-are-allowed-when-updating-product-images)
-  - [BUG: Throwing error from productControllers will not give a custom error response](#bug-throwing-error-from-productcontrollers-will-not-give-a-custom-error-response)
-    - [Original code](#original-code)
-  - [BUG: Bad responses not handled in the frontend](#bug-bad-responses-not-handled-in-the-frontend)
-    - [Example from PlaceOrderScreen.jsx](#example-from-placeorderscreenjsx)
-  - [BUG: After switching users, our new user gets the previous users cart](#bug-after-switching-users-our-new-user-gets-the-previous-users-cart)
-  - [BUG: Passing a string value to our `addDecimals` function](#bug-passing-a-string-value-to-our-adddecimals-function)
-  - [BUG: Token and Cookie expiration not handled in frontend](#bug-token-and-cookie-expiration-not-handled-in-frontend)
-  - [BUG: Calculation of prices as decimals gives odd results](#bug-calculation-of-prices-as-decimals-gives-odd-results)
-  - [FAQ: How do I use Vite instead of CRA?](#faq-how-do-i-use-vite-instead-of-cra)
-    - [Setting up the proxy](#setting-up-the-proxy)
-    - [Setting up linting](#setting-up-linting)
-    - [Vite outputs the build to /dist](#vite-outputs-the-build-to-dist)
-    - [Vite has a different script to run the dev server](#vite-has-a-different-script-to-run-the-dev-server)
-    - [A final note:](#a-final-note)
-  - [FIX: issues with LinkContainer](#fix-issues-with-linkcontainer)
-  * [License](#license)
+![Project 3 DevSecOps Architecture](images/architecture.png)
 
-<!-- tocstop -->
+### High-Level Flow
 
-## Features
-
-- Full featured shopping cart
-- Product reviews and ratings
-- Top products carousel
-- Product pagination
-- Product search feature
-- User profile with orders
-- Admin product management
-- Admin user management
-- Admin Order details page
-- Mark orders as delivered option
-- Checkout process (shipping, payment method, etc)
-- PayPal / credit card integration
-- Database seeder (products & users)
-
-## Usage
-
-- Create a MongoDB database and obtain your `MongoDB URI` - [MongoDB Atlas](https://www.mongodb.com/cloud/atlas/register)
-- Create a PayPal account and obtain your `Client ID` - [PayPal Developer](https://developer.paypal.com/)
-
-### Env Variables
-
-Rename the `.env.example` file to `.env` and add the following
-
-```
-NODE_ENV = development
-PORT = 5000
-MONGO_URI = your mongodb uri
-JWT_SECRET = 'abc123'
-PAYPAL_CLIENT_ID = your paypal client id
-PAGINATION_LIMIT = 8
+```text
+Developer
+    |
+    v
+GitHub Repository
+    |
+    | Webhook
+    v
+Jenkins on Ubuntu VM
+    |
+    |-- Checkout
+    |-- Install Dependencies
+    |-- Run Tests
+    |-- SonarQube Analysis
+    |-- Quality Gate
+    |-- Snyk Scan
+    |-- Docker Build
+    |-- Trivy Scan
+    |-- Push Image
+    `-- Deploy
+           |
+           v
+Azure Container Registry
+           |
+           v
+Azure Kubernetes Service
+           |
+           v
+Helm Release
+           |
+           v
+NGINX Ingress
+           |
+           v
+ClusterIP Service
+           |
+           v
+Application Pods
+           |
+           v
+Cloud Database
 ```
 
-Change the JWT_SECRET and PAGINATION_LIMIT to what you want
+## Technology Stack
 
-### Install Dependencies (frontend & backend)
+| Area | Technology |
+|---|---|
+| Application | Node.js / Express / React |
+| Source Control | GitHub |
+| CI/CD | Jenkins |
+| Infrastructure as Code | Terraform |
+| Containerization | Docker |
+| Container Registry | Azure Container Registry |
+| Orchestration | Azure Kubernetes Service |
+| Package / Deployment Management | Helm |
+| Ingress | NGINX Ingress Controller |
+| Code Quality | SonarQube |
+| Dependency Security | Snyk |
+| Container Security | Trivy |
+| Database | MongoDB-compatible cloud database |
+| Cloud | Microsoft Azure |
+| Administration | Azure CLI, kubectl, Helm CLI |
 
-```
-npm install
-cd frontend
-npm install
-```
+## Local Application Validation
 
-### Run
+The frontend and backend were first tested locally before cloud deployment.
 
-```
+![ProShop running locally](images/local-proshop.png)
 
-# Run frontend (:3000) & backend (:5000)
-npm run dev
+The documented local endpoints were:
 
-# Run backend only
-npm run server
-```
-
-## Build & Deploy
-
-```
-# Create frontend prod build
-cd frontend
-npm run build
-```
-
-### Seed Database
-
-You can use the following commands to seed the database with some sample users and products as well as destroy all data
-
-```
-# Import data
-npm run data:import
-
-# Destroy data
-npm run data:destroy
+```text
+Frontend: http://localhost:3000
+Backend:  http://localhost:5000
 ```
 
-```
-Sample User Logins
+## Docker Containerization
 
-admin@email.com (Admin)
-123456
+A Dockerfile was created for the ProShop application. During local validation, the application and MongoDB containers were connected through Docker networking.
 
-john@email.com (Customer)
-123456
+![Application and database containers](images/docker-containers.png)
 
-jane@email.com (Customer)
-123456
-```
+This verified container-to-container communication before moving the workload to Azure.
 
----
+## Infrastructure as Code with Terraform
 
-# Bug Fixes, corrections and code FAQ
+Terraform was used to provision the Azure infrastructure.
 
-The code here in the main branch has been updated since the course was published to fix bugs found by students of the course and answer common questions, if you are looking to compare your code to that from the course lessons then
-please refer to the [originalcoursecode](https://github.com/bradtraversy/proshop-v2/tree/originalCourseCode) branch of this repository.
+The Terraform configuration included:
 
-There are detailed notes in the comments that will hopefully help you understand
-and adopt the changes and corrections.
-An easy way of seeing all the changes and fixes is to use a note highlighter
-extension such as [This one for VSCode](https://marketplace.visualstudio.com/items?itemName=wayou.vscode-todo-highlight) or [this one for Vim](https://github.com/folke/todo-comments.nvim) Where by you can easily list all the **NOTE:** and **FIX:** tags in the comments.
-
-### BUG: Warnings on ProfileScreen
-
-We see the following warning in the browser console..
-
-`<tD> cannot appear as a child of <tr>.`
-
-and
-
-`warning: Received 'true' for a non-boolean attribute table.`
-
-> Code changes can be seen in [ProfileScreen.jsx](https://github.com/bradtraversy/proshop-v2/tree/main/frontend/src/screens/ProfileScreen.jsx)
-
-### BUG: Changing an uncontrolled input to be controlled
-
-In our SearchBox input, it's possible that our `urlKeyword` is **undefined**, in
-which case our initial state will be **undefined** and we will have an
-uncontrolled input initially i.e. not bound to state.
-In the case of `urlKeyword` being **undefined** we can set state to an empty
-string.
-
-> Code changes can be seen in [SearchBox.jsx](https://github.com/bradtraversy/proshop-v2/tree/main/frontend/src/components/SearchBox.jsx)
-
-### BUG: All file types are allowed when updating product images
-
-When updating and uploading product images as an Admin user, all file types are allowed. We only want to upload image files. This is fixed by using a fileFilter function and sending back an appropriate error when the wrong file type is uploaded.
-
-You may see that our `checkFileType` function is declared but never actually
-used, this change fixes that. The function has been renamed to `fileFilter` and
-passed to the instance of [ multer ](https://github.com/expressjs/multer#filefilter)
-
-> Code changes can be seen in [uploadRoutes.js](https://github.com/bradtraversy/proshop-v2/tree/main/backend/routes/uploadRoutes.js)
-
-### BUG: Throwing error from productControllers will not give a custom error response
-
-In section **3 - Custom Error Middleware** we throw an error from our
-`getProductById` controller function, with a _custom_ message.
-However if we have a invalid **ObjectId** as `req.params.id` and use that to
-query our products in the database, Mongoose will throw an error before we
-reach the line of code where we throw our own error.
-
-#### Original code
-
-```js
-const getProductById = asyncHandler(async (req, res) => {
-  const product = await Product.findById(req.params.id);
-  if (product) {
-    return res.json(product);
-  }
-  // NOTE: the following will never run if we have an invalid ObjectId
-  res.status(404);
-  throw new Error('Resource not found');
-});
+```text
+providers.tf
+variables.tf
+main.tf
+outputs.tf
+terraform.tfvars
+.gitignore
 ```
 
-Instead what we can do is if we do want to check for an invalid ObjectId is use
-a built in method from Mongoose - [isValidObjectId](<https://mongoosejs.com/docs/api/mongoose.html#Mongoose.prototype.isValidObjectId()>)
-There are a number of places in the project where we may want to check we are
-getting a valid ObjectId, so we can extract this logic to it's own middleware
-and drop it in to any route handler that needs it.  
-This also removes the need to check for a cast error in our errorMiddleware and
-is a little more explicit in checking for such an error.
+### Terraform Initialization
 
-> Changes can be seen in [errorMiddleware.js](https://github.com/bradtraversy/proshop-v2/tree/main/backend/middleware/errorMiddleware.js), [productRoutes.js](https://github.com/bradtraversy/proshop-v2/tree/main/backend/routes/productRoutes.js), [productController.js](https://github.com/bradtraversy/proshop-v2/tree/main/backend/controllers/productController.js) and [checkObjectId.js](https://github.com/bradtraversy/proshop-v2/tree/main/backend/middleware/checkObjectId.js)
+![Terraform initialization](images/terraform-init.png)
 
-### BUG: Bad responses not handled in the frontend
+### Terraform Plan
 
-There are a few cases in our frontend where if we get a bad response from our
-API then we try and render the error object.
-This you cannot do in React - if you are seeing an error along the lines of
-**Objects are not valid as a React child** and the app breaks for you, then this
-is likely the fix you need.
+![Terraform plan](images/terraform-plan.png)
 
-#### Example from PlaceOrderScreen.jsx
+The plan was reviewed before infrastructure creation.
 
-```jsx
-<ListGroup.Item>
-  {error && <Message variant='danger'>{error}</Message>}
-</ListGroup.Item>
+### Terraform Apply
+
+![Terraform apply](images/terraform-apply.png)
+
+The resulting environment included the Azure resource group, ACR, AKS and supporting cloud resources required by the project.
+
+![Azure resources](images/azure-resources.png)
+
+## Azure Container Registry
+
+The ProShop Docker image was pushed to Azure Container Registry.
+
+![ProShop image in ACR](images/acr-image.png)
+
+The image flow is:
+
+```text
+Source Code
+    |
+    v
+Docker Build
+    |
+    v
+Security Scan
+    |
+    v
+Azure Container Registry
+    |
+    v
+AKS Deployment
 ```
 
-In the above code we check for a error that we get from our [useMutation](https://redux-toolkit.js.org/rtk-query/usage/mutations)
-hook. This will be an object though which we cannot render in React, so here we
-need the message we sent back from our API server...
+## Azure Kubernetes Service
 
-```jsx
-<ListGroup.Item>
-  {error && <Message variant='danger'>{error.data.message}</Message>}
-</ListGroup.Item>
+After provisioning AKS, `kubectl` was configured to communicate with the cluster.
+
+![AKS node verification](images/aks-nodes.png)
+
+This confirmed that the Kubernetes node was available and ready.
+
+## Helm Deployment
+
+A Helm chart was created to package the Kubernetes deployment configuration.
+
+Before deployment, the chart was checked with Helm lint.
+
+![Helm lint](images/helm-lint.png)
+
+The application was then installed into AKS as a Helm release.
+
+![Helm deployment](images/helm-deployed.png)
+
+Application logs confirmed that the backend was running in production mode and connecting to the configured cloud database.
+
+![AKS application logs](images/aks-app-logs.png)
+
+## Kubernetes Traffic Flow
+
+The final application traffic flow uses NGINX Ingress:
+
+```text
+Internet
+   |
+   v
+NGINX Ingress Controller
+   |
+   v
+Ingress Resource
+   |
+   v
+ProShop ClusterIP Service
+   |
+   v
+Application Pod(s)
 ```
 
-The same is true for [handling errors from our RTK queries.](https://redux-toolkit.js.org/rtk-query/usage/error-handling)
+![NGINX Ingress and service](images/nginx-ingress.png)
 
-> Changes can be seen in:-
->
-> - [PlaceOrderScreen.jsx](https://github.com/bradtraversy/proshop-v2/tree/main/frontend/src/screens/PlaceOrderScreen.jsx)
-> - [OrderScreen.jsx](https://github.com/bradtraversy/proshop-v2/tree/main/frontend/src/screens/OrderScreen.jsx)
-> - [ProductEditScreen.jsx](https://github.com/bradtraversy/proshop-v2/tree/main/frontend/src/screens/admin/ProductEditScreen.jsx)
-> - [ProductListScreen.jsx](https://github.com/bradtraversy/proshop-v2/tree/main/frontend/src/screens/admin/ProductListScreen.jsx)
+This keeps the application service internal to the cluster while NGINX handles external HTTP traffic.
 
-### BUG: After switching users, our new user gets the previous users cart
+## Jenkins Server
 
-When our user logs out we clear **userInfo** and **expirationTime** from local
-storage but not the **cart**.  
-So when we log in with a different user, they _inherit_ the previous users cart
-and shipping information.
+A dedicated Ubuntu VM was provisioned for Jenkins.
 
-The solution is to simply clear local storage entirely and so remove the
-**cart**, **userInfo** and **expirationTime**.
+![Jenkins dashboard](images/jenkins-dashboard.png)
 
-> Changes can be seen in:-
->
-> - [authSlice.js](https://github.com/bradtraversy/proshop-v2/tree/main/frontend/src/slices/authSlice.js)
-> - [cartSlice.js](https://github.com/bradtraversy/proshop-v2/tree/main/frontend/src/slices/cartSlice.js)
-> - [Header.jsx](https://github.com/bradtraversy/proshop-v2/tree/main/frontend/src/components/Header.jsx)
+The Jenkins host was prepared with the tools required by the pipeline, including:
 
-### BUG: Passing a string value to our `addDecimals` function
+- Java
+- Jenkins
+- Docker
+- Git
+- Azure CLI
+- kubectl
+- Helm
+- Trivy
+- Node.js
+- Snyk
+- SonarQube integration
 
-Our `addDecimals` function expects a **Number** type as an argument so calling
-it by passing a **String** type as the argument could produce some issues.
-It kind of works because JavaScript type coerces the string to a number when we
-try to use mathematic operators on strings. But this is prone to error and can
-be improved.
+![Docker and Git on Jenkins VM](images/jenkins-tools.png)
 
-> Changes can be seen in:
->
-> - [cartUtils.js](https://github.com/bradtraversy/proshop-v2/tree/main/frontend/src/utils/cartUtils.js)
-> - [calcPrices.js](https://github.com/bradtraversy/proshop-v2/tree/main/backend/utils/calcPrices.js)
+### Kubernetes Tooling
 
-### BUG: Token and Cookie expiration not handled in frontend
+![kubectl installed](images/kubectl-version.png)
 
-The cookie and the JWT expire after 30 days.
-However for our private routing in the client our react app simply trusts that if we have a user in local storage, then that user is authenticated.
-So we have a situation where in the client they can access private routes, but the API calls to the server fail because there is no cookie with a valid JWT.
+![Helm installed](images/helm-version.png)
 
-The solution is to wrap/customize the RTK [baseQuery](https://redux-toolkit.js.org/rtk-query/usage/customizing-queries#customizing-queries-with-basequery) with our own custom functionality that will log out a user on any 401 response
+## DevSecOps Security Tooling
 
-> Changes can be seein in:
->
-> - [apiSlice.js](https://github.com/bradtraversy/proshop-v2/tree/main/frontend/src/slices/apiSlice.js)
+### SonarQube
 
-Additionally we can remove the following code:
+SonarQube was integrated with Jenkins for static code-quality analysis.
 
-```js
-const expirationTime = new Date().getTime() + 30 * 24 * 60 * 60 * 1000; // 30 days
-localStorage.setItem('expirationTime', expirationTime);
+In this implementation, SonarQube runs on the same VM as Jenkins, allowing Jenkins to communicate with it internally rather than requiring the SonarQube service to be exposed publicly.
+
+![SonarQube Jenkins integration](images/sonarqube-jenkins-plugin.png)
+
+### Snyk
+
+Snyk was installed for dependency vulnerability scanning.
+
+![Snyk installed](images/snyk-version.png)
+
+### Trivy
+
+Trivy was installed on the Jenkins VM for container image vulnerability scanning.
+
+![Trivy installed](images/trivy-version.png)
+
+## Jenkins CI/CD Pipeline
+
+The final Jenkins pipeline connects the development, security, container, registry, and Kubernetes stages.
+
+![Jenkins DevSecOps pipeline](images/jenkins-pipeline.png)
+
+A simplified pipeline is:
+
+```text
+GitHub
+  |
+  v
+Checkout
+  |
+  v
+Install Dependencies
+  |
+  v
+Run Tests
+  |
+  v
+SonarQube Analysis
+  |
+  v
+Quality Gate
+  |
+  v
+Snyk Dependency Scan
+  |
+  v
+Docker Build
+  |
+  v
+Trivy Image Scan
+  |
+  v
+Push to ACR
+  |
+  v
+Deploy to AKS
 ```
 
-from our [authSlice.js](https://github.com/bradtraversy/proshop-v2/tree/main/frontend/src/slices/authSlice.js) as it's never
-actually used in the project in any way.
+## Authentication and Credentials
 
-### BUG: Calculation of prices as decimals gives odd results
+Jenkins requires credentials to authenticate with Azure and the security tooling. These values are stored in the Jenkins Credentials store and referenced by the pipeline rather than being written directly into the Jenkinsfile.
 
-JavaSCript uses floating point numbers for decimals which can give some funky
-results for example:
+> **Security note:** passwords, API tokens, service-principal secrets, subscription identifiers, and other credentials are intentionally excluded from this README and its screenshots. Any credentials that were exposed during project documentation should be rotated before the repository is made public.
 
-```js
-0.1 + 0.2; // 0.30000000000000004 🤯
+## Deployment Verification
+
+The implementation verified:
+
+- Frontend and backend running locally
+- Docker application/database networking
+- Terraform initialization and infrastructure provisioning
+- Azure Container Registry image push
+- AKS cluster connectivity
+- Helm chart validation
+- Successful Helm release
+- Application pods running in AKS
+- Backend cloud-database connectivity
+- Jenkins server/tool installation
+- SonarQube integration
+- Snyk installation
+- Trivy installation
+- Jenkins pipeline execution
+- NGINX Ingress routing to the application service
+
+![Deployed ProShop application](images/deployed-app.png)
+
+## DevSecOps Controls
+
+This project introduces security checks at multiple points rather than treating security as a final deployment step.
+
+| Pipeline Area | Control |
+|---|---|
+| Source / Code | SonarQube analysis |
+| Dependencies | Snyk vulnerability scanning |
+| Container Image | Trivy vulnerability scanning |
+| Credentials | Jenkins Credentials store |
+| Image Storage | Azure Container Registry |
+| Deployment | Kubernetes / Helm |
+| External Traffic | NGINX Ingress |
+
+## Why Jenkins?
+
+Jenkins acts as the automation engine for the project. It does not create application tests automatically; it orchestrates the tests and commands defined for the application and controls whether later pipeline stages should run.
+
+The GitHub webhook provides event-driven triggering so Jenkins can start the pipeline when repository changes occur.
+
+## Why ACR + AKS?
+
+Azure Container Registry provides a private Azure location for storing versioned application images, while AKS provides Kubernetes orchestration for running and managing those images.
+
+```text
+Docker Image
+    |
+    v
+ACR
+    |
+    v
+AKS
+    |
+    +-- Deployment
+    +-- Pods
+    +-- Service
+    `-- Ingress
 ```
 
-Or a more specific example in our application would be that our airpods have a
-`price: 89.99` and if we do:
+## Why Helm?
 
-```js
-3 * 89.99; // 269.96999999999997
+Helm packages Kubernetes configuration into a reusable chart. Instead of managing multiple Kubernetes manifests independently, application configuration can be deployed and upgraded as a versioned Helm release.
+
+## Challenges and Solutions
+
+| Challenge | Solution |
+|---|---|
+| Needed repeatable Azure infrastructure | Provisioned infrastructure using Terraform |
+| Needed consistent application packaging | Containerized ProShop with Docker |
+| Needed a private image repository | Used Azure Container Registry |
+| Needed container orchestration | Deployed to Azure Kubernetes Service |
+| Needed repeatable Kubernetes deployment | Created and deployed a Helm chart |
+| Needed automated CI/CD | Used Jenkins on a dedicated Ubuntu VM |
+| Needed code-quality analysis | Integrated SonarQube |
+| Needed dependency scanning | Installed Snyk |
+| Needed image vulnerability scanning | Installed Trivy |
+| Needed controlled external routing | Used NGINX Ingress with an internal ClusterIP service |
+
+## Key Learnings
+
+This project provided hands-on experience with:
+
+- Jenkins pipeline design
+- GitHub webhook-based CI/CD triggering
+- Terraform infrastructure provisioning
+- Docker containerization and networking
+- Azure Container Registry
+- Azure Kubernetes Service
+- Kubernetes pods, services and ingress
+- Helm charts and releases
+- NGINX Ingress Controller
+- SonarQube integration
+- Snyk dependency scanning
+- Trivy container scanning
+- Azure CLI and kubectl
+- Jenkins credential management
+- End-to-end DevSecOps workflow design
+
+## Future Improvements
+
+Potential next improvements include:
+
+1. Enforce explicit vulnerability thresholds that automatically stop releases on unacceptable findings.
+2. Add automated integration and post-deployment smoke tests.
+3. Add Horizontal Pod Autoscaling and resource requests/limits if not already configured in the final chart.
+4. Add Azure Monitor / Container Insights for AKS observability.
+5. Store application secrets using a dedicated secrets-management integration.
+6. Add separate Development, Staging and Production Kubernetes environments.
+7. Add image tagging based on Git commit SHA or Jenkins build number.
+
+## Repository Structure
+
+A typical repository structure for this implementation is:
+
+```text
+proshop-devsecops-aks/
+|
+|-- frontend/
+|-- backend/
+|-- Dockerfile
+|-- Jenkinsfile
+|
+|-- terraform/
+|   |-- providers.tf
+|   |-- variables.tf
+|   |-- main.tf
+|   |-- outputs.tf
+|   `-- terraform.tfvars
+|
+|-- helm/
+|   `-- proshop/
+|       |-- Chart.yaml
+|       |-- values.yaml
+|       `-- templates/
+|
+|-- images/
+`-- README.md
 ```
 
-The solution would be to calculate prices in whole numbers:
+## Project Summary
 
-```js
-(3 * (89.99 * 100)) / 100; // 269.97
-```
+This project demonstrates an end-to-end DevSecOps deployment of a Node.js shopping application to Azure Kubernetes Service.
 
-> Changes can be see in in:
->
-> - [PlaceOrderScreen.jsx](https://github.com/bradtraversy/proshop-v2/tree/main/frontend/src/screens/PlaceOrderScreen.jsx)
-> - [cartUtils.js](https://github.com/bradtraversy/proshop-v2/tree/main/frontend/src/utils/cartUtils.js)
-> - [calcPrices.js](https://github.com/bradtraversy/proshop-v2/tree/main/backend/utils/calcPrices.js)
+Terraform provisions the Azure infrastructure, Docker packages the application, ACR stores the image, Jenkins orchestrates the CI/CD and security stages, SonarQube/Snyk/Trivy provide layered checks, Helm manages the Kubernetes release, and NGINX Ingress routes user traffic to the application running in AKS.
 
-### FAQ: How do I use Vite instead of CRA?
-
-Ok so you're at **Section 1 - Starting The Frontend** in the course and you've
-heard cool things about [Vite](https://vitejs.dev/) and why you should use that
-instead of [Create React App](https://create-react-app.dev/) in 2023.
-
-There are a few differences you need to be aware of using Vite in place of CRA
-here in the course after [scaffolding out your Vite React app](https://github.com/vitejs/vite/tree/main/packages/create-vite#create-vite)
-
-#### Setting up the proxy
-
-Using CRA we have a `"proxy"` setting in our frontend/package.json to avoid
-breaking the browser [Same Origin Policy](https://developer.mozilla.org/en-US/docs/Web/Security/Same-origin_policy) in development.
-In Vite we have to set up our proxy in our
-[vite.config.js](https://vitejs.dev/config/server-options.html#server-proxy).
-
-```js
-import { defineConfig } from 'vite';
-import react from '@vitejs/plugin-react';
-
-export default defineConfig({
-  plugins: [react()],
-  server: {
-    // proxy requests prefixed '/api' and '/uploads'
-    proxy: {
-      '/api': 'http://localhost:5000',
-      '/uploads': 'http://localhost:5000',
-    },
-  },
-});
-```
-
-#### Setting up linting
-
-By default CRA outputs linting from eslint to your terminal and browser console.
-To get Vite to ouput linting to the terminal you need to add a [plugin](https://www.npmjs.com/package/vite-plugin-eslint) as a
-development dependency...
-
-```bash
-npm i -D vite-plugin-eslint
-
-```
-
-Then add the plugin to your **vite.config.js**
-
-```js
-import { defineConfig } from 'vite';
-import react from '@vitejs/plugin-react';
-// import the plugin
-import eslintPlugin from 'vite-plugin-eslint';
-
-export default defineConfig({
-  plugins: [
-    react(),
-    eslintPlugin({
-      // setup the plugin
-      cache: false,
-      include: ['./src/**/*.js', './src/**/*.jsx'],
-      exclude: [],
-    }),
-  ],
-  server: {
-    proxy: {
-      '/api': 'http://localhost:5000',
-      '/uploads': 'http://localhost:5000',
-    },
-  },
-});
-```
-
-By default the eslint config that comes with a Vite React project treats some
-rules from React as errors which will break your app if you are following Brad exactly.
-You can change those rules to give a warning instead of an error by modifying
-the **eslintrc.cjs** that came with your Vite project.
-
-```js
-module.exports = {
-  env: { browser: true, es2020: true },
-  extends: [
-    'eslint:recommended',
-    'plugin:react/recommended',
-    'plugin:react/jsx-runtime',
-    'plugin:react-hooks/recommended',
-  ],
-  parserOptions: { ecmaVersion: 'latest', sourceType: 'module' },
-  settings: { react: { version: '18.2' } },
-  plugins: ['react-refresh'],
-  rules: {
-    // turn this one off
-    'react/prop-types': 'off',
-    // change these errors to warnings
-    'react-refresh/only-export-components': 'warn',
-    'no-unused-vars': 'warn',
-  },
-};
-```
-
-#### Vite outputs the build to /dist
-
-Create React App by default outputs the build to a **/build** directory and this is
-what we serve from our backend in production.  
-Vite by default outputs the build to a **/dist** directory so we need to make
-some adjustments to our [backend/server.js](https://github.com/bradtraversy/proshop-v2/tree/main/backend/server.js)
-Change...
-
-```js
-app.use(express.static(path.join(__dirname, '/frontend/build')));
-```
-
-to...
-
-```js
-app.use(express.static(path.join(__dirname, '/frontend/dist')));
-```
-
-and...
-
-```js
-app.get('*', (req, res) =>
-  res.sendFile(path.resolve(__dirname, 'frontend', 'build', 'index.html'))
-);
-```
-
-to...
-
-```js
-app.get('*', (req, res) =>
-  res.sendFile(path.resolve(__dirname, 'frontend', 'dist', 'index.html'))
-);
-```
-
-#### Vite has a different script to run the dev server
-
-In a CRA project you run `npm start` to run the development server, in Vite you
-start the development server with `npm run dev`  
-If you are using the **dev** script in your root pacakge.json to run the project
-using concurrently, then you will also need to change your root package.json
-scripts from...
-
-```json
-    "client": "npm start --prefix frontend",
-```
-
-to...
-
-```json
-    "client": "npm run dev --prefix frontend",
-```
-
-Or you can if you wish change the frontend/package.json scripts to use `npm
-start`...
-
-```json
-    "start": "vite",
-```
-
-#### A final note:
-
-Vite requires you to name React component files using the `.jsx` file
-type, so you won't be able to use `.js` for your components. The entry point to
-your app will be in `main.jsx` instead of `index.js`
-
-And that's it! You should be good to go with the course using Vite.
-
-### FIX: issues with LinkContainer
-
-The `LinkContainer` component from [react-router-bootstrap](https://github.com/react-bootstrap/react-router-bootstrap) was used to wrap React Routers `Link` component for convenient integration between React Router and styling with Bootstrap.  
-However **react-router-bootstrap** hasn't kept up with React and you may see
-warnings in your console along the lines of:
-
-```
- LinkContainer: Support for defaultProps will be removed from function components in a future major release. Use JavaScript default parameters instead.
-```
-
-Which is because React is removing default component props in favour of using
-default function parameters and `LinkContainer` still uses
-`Component.defaultProps`.  
-However you don't really need `LinkContainer` as we can simply use the `as` prop
-on any React Bootstrap component to render any element of your choice, including
-React Routers `Link` component.
-
-For example in our [Header.jsx](frontend/src/components/Header.jsx) we can first
-import `Link`:
-
-```jsx
-import { useNavigate, Link } from 'react-router-dom';
-```
-
-Then instead of using `LinkContainer`:
-
-```jsx
-<LinkContainer to='/'>
-  <Navbar.Brand>
-    <img src={logo} alt='ProShop' />
-    ProShop
-  </Navbar.Brand>
-</LinkContainer>
-```
-
-We can remove `LinkContainer` and use the **as** prop on the `Navbar.Brand`
-
-```jsx
-<Navbar.Brand as={Link} to='/'>
-  <img src={logo} alt='ProShop' />
-  ProShop
-</Navbar.Brand>
-```
-
-> **Changes can be seen in:**
->
-> - [Header.jsx](frontend/src/components/Header.jsx)
-> - [CheckoutSteps.jsx](frontend/src/components/CheckoutSteps.jsx)
-> - [Paginate.jsx](frontend/src/components/Paginate.jsx)
-> - [ProfileScreen.jsx](frontend/src/screens/ProfileScreen.jsx)
-> - [OrderListScreen.jsx](frontend/src/screens/admin/OrderListScreen.jsx)
-> - [ProductListScreen.jsx](frontend/src/screens/admin/ProductListScreen.jsx)
-> - [UserListScreen.jsx](frontend/src/screens/admin/UserListScreen.jsx)
-
-After these changes you can then remove **react-router-bootstrap** from your
-dependencies in [frontend/package.json](frontend/package.json)
-
----
-
-## License
-
-The MIT License
-
-Copyright (c) 2023 Traversy Media https://traversymedia.com
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in
-all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-THE SOFTWARE.
+The result is a practical cloud-native pipeline that combines infrastructure automation, CI/CD, container security, Kubernetes deployment, and application delivery in one project.
